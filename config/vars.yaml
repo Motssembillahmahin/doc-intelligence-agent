@@ -1,0 +1,50 @@
+database:
+  pool_size: 5
+  max_overflow: 10
+  echo: false
+
+ingestion:
+  max_file_size_mb: 50
+  supported_formats:
+    - ".pdf"
+  ocr_enabled: true
+  ocr_language: "eng"
+  image_dpi: 300
+
+chunking:
+  chunk_size: 1000
+  chunk_overlap: 200
+  separator: "\n\n"
+
+embedding:
+  model: "text-embedding-3-small"
+  dimensions: 1536
+  batch_size: 100
+
+retrieval:
+  top_k: 10
+  rerank_top_k: 5
+  alpha: 0.7
+  rerank_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+llm:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 0.1
+
+conversation:
+  max_history_turns: 5
+  summary_after_turns: 10
+
+processing:
+  celery_task_timeout: 600
+  max_concurrent_tasks: 4
+
+observability:
+  log_level: "INFO"
+  log_format: "json"
+  enable_traces: true
+
+chromadb:
+  collection_name: "doc_chunks"
+  distance_function: "cosine"

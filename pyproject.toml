@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "doc-intelligence-agent"
+version = "0.1.0"
+description = "AI-Powered Document Intelligence System"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlmodel",
+    "alembic",
+    "asyncpg",
+    "psycopg2-binary",
+    "celery[sqlalchemy]",
+    "chromadb",
+    "PyMuPDF",
+    "pdfplumber",
+    "camelot-py",
+    "pytesseract",
+    "anthropic",
+    "openai",
+    "langchain-text-splitters",
+    "tiktoken",
+    "sentence-transformers",
+    "pydantic-settings[yaml]",
+    "pyyaml",
+    "structlog",
+    "streamlit",
+    "aiolimiter",
+    "reportlab",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "httpx",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "TCH"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
