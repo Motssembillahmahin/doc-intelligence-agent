@@ -9,7 +9,7 @@ from sqlmodel import SQLModel
 from src.config import get_settings
 
 # Import all models so their metadata is registered
-from src.models.database import Document, Metric, Message, QueryTrace, Session  # noqa: F401
+from src.models.database import Document, Message, Metric, QueryTrace, Session  # noqa: F401
 
 config = context.config
 

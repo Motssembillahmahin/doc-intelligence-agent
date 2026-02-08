@@ -1,52 +1,96 @@
+"""Database models for the Document Intelligence System."""
+
 from __future__ import annotations
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
-import sqlalchemy as sa
-from sqlmodel import Field, SQLModel
+from sqlalchemy import Column, Index
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlmodel import Field, Relationship, SQLModel
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 
-class DocumentStatus(str, enum.Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    COMPLETED_WITH_WARNINGS = "completed_with_warnings"
-    FAILED = "failed"
-    SKIPPED = "skipped"
+def _utc_now() -> datetime:
+    return datetime.now(tz=UTC)
+
+
+# ─── Enums ────────────────────────────────────────────────────────────────────
+
+
+class DocumentStatus(enum.StrEnum):
+    """Lifecycle status of an ingested document."""
+
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    completed_with_warnings = "completed_with_warnings"
+    failed = "failed"
+    skipped = "skipped"
+
+
+class ChunkType(enum.StrEnum):
+    """Content type of a document chunk."""
+
+    text = "text"
+    table = "table"
+    image_caption = "image_caption"
+
+
+class MessageRole(enum.StrEnum):
+    """Role of a chat message."""
+
+    user = "user"
+    assistant = "assistant"
+
+
+# ─── Models ───────────────────────────────────────────────────────────────────
 
 
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    filename: str
-    file_hash: str = Field(unique=True, index=True)
-    status: DocumentStatus = Field(
-        sa_column=sa.Column(
-            sa.Enum(DocumentStatus, name="document_status", native_enum=True),
-            nullable=False,
-            default=DocumentStatus.PENDING,
-        )
-    )
-    total_pages: int | None = None
-    file_size_bytes: int | None = None
+    filename: str = Field(index=True)
+    file_path: str
+    file_hash: str = Field(index=True)  # SHA-256 for change detection
+    file_size_bytes: int
+    page_count: int | None = None
+    status: DocumentStatus = Field(default=DocumentStatus.pending, index=True)
+    warnings: list | None = Field(default=None, sa_column=Column(JSONB))
     error_message: str | None = None
-    warnings: list | None = Field(default=None, sa_column=sa.Column(sa.JSON))
-    metadata_: dict | None = Field(
-        default=None, sa_column=sa.Column("metadata", sa.JSON)
+    summary: str | None = None
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
+
+    # Relationships
+    chunks: list[Chunk] = Relationship(
+        back_populates="document",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(sa.DateTime, server_default=sa.func.now()),
-    )
-    updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(
-            sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()
-        ),
-    )
+
+
+class Chunk(SQLModel, table=True):
+    __tablename__ = "chunks"
+    __table_args__ = (Index("ix_chunks_search_vector", "search_vector", postgresql_using="gin"),)
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    doc_id: uuid.UUID = Field(foreign_key="documents.id", index=True)
+    content: str
+    chunk_type: ChunkType = Field(default=ChunkType.text)
+    page_num: int
+    section_heading: str | None = None
+    chunk_index: int  # Position within the document
+    token_count: int
+    chunk_metadata: dict | None = Field(default=None, sa_column=Column(JSONB))
+    embedding_id: str | None = None  # Reference to ChromaDB vector ID
+    search_vector: str | None = Field(default=None, sa_column=Column(TSVECTOR))
+    created_at: datetime = Field(default_factory=_utc_now)
+
+    # Relationships
+    document: Document | None = Relationship(back_populates="chunks")
 
 
 class Session(SQLModel, table=True):
@@ -54,15 +98,18 @@ class Session(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     title: str | None = None
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(sa.DateTime, server_default=sa.func.now()),
+    summary: str | None = None  # Compressed conversation history
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
+
+    # Relationships
+    messages: list[Message] = Relationship(
+        back_populates="session",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
-    updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(
-            sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()
-        ),
+    query_traces: list[QueryTrace] = Relationship(
+        back_populates="session",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
 
 
@@ -71,40 +118,44 @@ class Message(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     session_id: uuid.UUID = Field(foreign_key="sessions.id", index=True)
-    role: str
+    role: MessageRole
     content: str
-    rewritten_query: str | None = None
-    timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(sa.DateTime, server_default=sa.func.now()),
-    )
+    original_query: str | None = None  # Pre-rewrite user query
+    rewritten_query: str | None = None  # Post-rewrite for context resolution
+    created_at: datetime = Field(default_factory=_utc_now)
+
+    # Relationships
+    session: Session | None = Relationship(back_populates="messages")
+    query_trace: QueryTrace | None = Relationship(back_populates="message")
 
 
 class QueryTrace(SQLModel, table=True):
     __tablename__ = "query_traces"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    message_id: uuid.UUID | None = Field(default=None, foreign_key="messages.id", unique=True)
     session_id: uuid.UUID = Field(foreign_key="sessions.id", index=True)
     original_query: str
     rewritten_query: str | None = None
-    retrieved_chunks: list | None = Field(default=None, sa_column=sa.Column(sa.JSON))
-    scores: list | None = Field(default=None, sa_column=sa.Column(sa.JSON))
-    response: str | None = None
-    latency_ms: float | None = None
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(sa.DateTime, server_default=sa.func.now()),
-    )
+    retrieved_chunks: list | None = Field(default=None, sa_column=Column(JSONB))
+    reranked_chunks: list | None = Field(default=None, sa_column=Column(JSONB))
+    context_tokens: int | None = None
+    response_tokens: int | None = None
+    total_latency_ms: float | None = None
+    retrieval_latency_ms: float | None = None
+    llm_latency_ms: float | None = None
+    created_at: datetime = Field(default_factory=_utc_now)
+
+    # Relationships
+    session: Session | None = Relationship(back_populates="query_traces")
+    message: Message | None = Relationship(back_populates="query_trace")
 
 
 class Metric(SQLModel, table=True):
     __tablename__ = "metrics"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(index=True)
-    value: float
-    labels: dict | None = Field(default=None, sa_column=sa.Column(sa.JSON))
-    timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=sa.Column(sa.DateTime, server_default=sa.func.now()),
-    )
+    metric_name: str = Field(index=True)
+    metric_value: float
+    labels: dict | None = Field(default=None, sa_column=Column(JSONB))
+    created_at: datetime = Field(default_factory=_utc_now)

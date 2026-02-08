@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
-from pydantic_settings.yaml_config import YamlConfigSettingsSource
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, YamlConfigSettingsSource
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = PROJECT_ROOT / "config"
