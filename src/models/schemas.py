@@ -5,7 +5,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from src.models.database import DocumentStatus
+from src.models.enums import DocumentStatus
 
 
 class DocumentUploadResponse(BaseModel):

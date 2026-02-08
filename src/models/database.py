@@ -1,53 +1,19 @@
 """Database models for the Document Intelligence System."""
 
-from __future__ import annotations
-
 import enum
 import uuid
 from datetime import UTC, datetime
+from typing import Optional
 
 from sqlalchemy import Column, Index
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlmodel import Field, Relationship, SQLModel
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+from src.models.enums import MessageRole, ChunkType, DocumentStatus
 
 
 def _utc_now() -> datetime:
     return datetime.now(tz=UTC)
-
-
-# ─── Enums ────────────────────────────────────────────────────────────────────
-
-
-class DocumentStatus(enum.StrEnum):
-    """Lifecycle status of an ingested document."""
-
-    pending = "pending"
-    processing = "processing"
-    completed = "completed"
-    completed_with_warnings = "completed_with_warnings"
-    failed = "failed"
-    skipped = "skipped"
-
-
-class ChunkType(enum.StrEnum):
-    """Content type of a document chunk."""
-
-    text = "text"
-    table = "table"
-    image_caption = "image_caption"
-
-
-class MessageRole(enum.StrEnum):
-    """Role of a chat message."""
-
-    user = "user"
-    assistant = "assistant"
-
-
-# ─── Models ───────────────────────────────────────────────────────────────────
-
 
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
@@ -66,7 +32,7 @@ class Document(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_utc_now)
 
     # Relationships
-    chunks: list[Chunk] = Relationship(
+    chunks: list["Chunk"] = Relationship(
         back_populates="document",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
@@ -103,11 +69,11 @@ class Session(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_utc_now)
 
     # Relationships
-    messages: list[Message] = Relationship(
+    messages: list["Message"] = Relationship(
         back_populates="session",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
-    query_traces: list[QueryTrace] = Relationship(
+    query_traces: list["QueryTrace"] = Relationship(
         back_populates="session",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
     )
@@ -126,7 +92,7 @@ class Message(SQLModel, table=True):
 
     # Relationships
     session: Session | None = Relationship(back_populates="messages")
-    query_trace: QueryTrace | None = Relationship(back_populates="message")
+    query_trace: Optional["QueryTrace"] = Relationship(back_populates="message")
 
 
 class QueryTrace(SQLModel, table=True):
