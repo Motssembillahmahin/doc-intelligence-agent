@@ -7,6 +7,7 @@ from pathlib import Path
 
 import structlog
 
+from src.services.ingestion_service import ingest_document
 from src.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -15,8 +16,6 @@ logger = structlog.get_logger(__name__)
 @celery_app.task(name="ingest_document", bind=True, max_retries=1)
 def ingest_document_task(self, doc_id: str, file_path: str) -> dict:
     """Background task to ingest a PDF document."""
-    from src.services.ingestion_service import ingest_document
-
     log = logger.bind(doc_id=doc_id, task_id=self.request.id)
     log.info("task_started")
 

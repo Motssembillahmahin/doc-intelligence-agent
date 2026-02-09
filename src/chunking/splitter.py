@@ -10,7 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from src.config import get_settings
 from src.ingestion.pipeline import PageContent
-from src.models.database import ChunkType
+from src.models.enums import ChunkType
 
 logger = structlog.get_logger(__name__)
 
@@ -26,9 +26,10 @@ class ChunkData:
     metadata: dict = field(default_factory=dict)
 
 
-def _count_tokens(text: str, encoding_name: str = "cl100k_base") -> int:
-    """Count tokens using tiktoken."""
-    enc = tiktoken.get_encoding(encoding_name)
+def _count_tokens(text: str) -> int:
+    """Count tokens using tiktoken with encoding from config."""
+    settings = get_settings()
+    enc = tiktoken.get_encoding(settings.chunking.tiktoken_encoding)
     return len(enc.encode(text))
 
 

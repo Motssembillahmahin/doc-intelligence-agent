@@ -11,6 +11,7 @@ class DocumentStatus(enum.StrEnum):
     failed = "failed"
     skipped = "skipped"
 
+
 class ChunkType(enum.StrEnum):
     text = "text"
     table = "table"

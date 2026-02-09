@@ -16,7 +16,7 @@ from src.chunking.heading_detector import (
 from src.chunking.splitter import ChunkData, _count_tokens, split_pages
 from src.ingestion.pipeline import PageContent
 from src.ingestion.table_extractor import ExtractedTable
-from src.models.database import ChunkType
+from src.models.enums import ChunkType
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -103,12 +103,12 @@ class TestGetCurrentHeading:
             ),
         ]
 
-        assert get_current_heading(all_headings, 1, "") == "Background"
-        assert get_current_heading(all_headings, 2, "") == "Methods"
+        assert get_current_heading(all_headings, 1) == "Background"
+        assert get_current_heading(all_headings, 2) == "Methods"
 
     def test_returns_none_when_no_headings(self):
         all_headings = [PageHeadings(page_num=1, headings=[])]
-        assert get_current_heading(all_headings, 1, "") is None
+        assert get_current_heading(all_headings, 1) is None
 
 
 # ─── Token Counter Tests ─────────────────────────────────────────────────────

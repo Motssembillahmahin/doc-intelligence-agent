@@ -15,6 +15,7 @@ chunking:
   chunk_size: 1000
   chunk_overlap: 200
   separator: "\n\n"
+  tiktoken_encoding: "cl100k_base"
 
 embedding:
   model: "text-embedding-3-small"

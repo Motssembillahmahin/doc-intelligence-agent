@@ -121,10 +121,8 @@ def detect_headings(file_path: Path) -> list[PageHeadings]:
     return results
 
 
-def get_current_heading(
-    all_headings: list[PageHeadings], page_num: int, text_offset: str
-) -> str | None:
-    """Get the most recent heading at or before a given position.
+def get_current_heading(all_headings: list[PageHeadings], page_num: int) -> str | None:
+    """Get the most recent heading at or before a given page.
 
     Useful for assigning section_heading metadata to chunks.
     Walks backwards through pages to find the latest heading.

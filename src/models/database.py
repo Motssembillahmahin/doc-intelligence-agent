@@ -1,6 +1,5 @@
 """Database models for the Document Intelligence System."""
 
-import enum
 import uuid
 from datetime import UTC, datetime
 from typing import Optional
@@ -9,11 +8,12 @@ from sqlalchemy import Column, Index
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlmodel import Field, Relationship, SQLModel
 
-from src.models.enums import MessageRole, ChunkType, DocumentStatus
+from src.models.enums import ChunkType, DocumentStatus, MessageRole
 
 
 def _utc_now() -> datetime:
     return datetime.now(tz=UTC)
+
 
 class Document(SQLModel, table=True):
     __tablename__ = "documents"
