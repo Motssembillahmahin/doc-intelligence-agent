@@ -15,11 +15,15 @@ from src.services.ingestion_service import create_document_record, ingest_docume
 
 
 class TestIngestDocument:
+    @patch("src.embeddings.embedder.embed_chunks")
+    @patch("src.embeddings.chromadb_store.ChromaDBStore")
     @patch("src.services.ingestion_service.split_pages")
     @patch("src.services.ingestion_service._build_headings_map")
     @patch("src.services.ingestion_service.run_ingestion")
     @patch("src.services.ingestion_service.get_sync_session")
-    def test_successful_ingestion(self, mock_session_fn, mock_pipeline, mock_headings, mock_split):
+    def test_successful_ingestion(
+        self, mock_session_fn, mock_pipeline, mock_headings, mock_split, mock_chroma, mock_embed
+    ):
         doc_id = uuid.uuid4()
         mock_doc = MagicMock(spec=Document)
         mock_doc.id = doc_id
@@ -47,6 +51,7 @@ class TestIngestDocument:
                 token_count=2,
             ),
         ]
+        mock_embed.return_value = (1, [])
 
         result = ingest_document(doc_id, Path("/tmp/test.pdf"))
 
@@ -56,6 +61,7 @@ class TestIngestDocument:
         # Chunk was added to session
         assert session.add.call_count >= 1
         mock_split.assert_called_once()
+        mock_embed.assert_called_once()
 
     @patch("src.services.ingestion_service.split_pages")
     @patch("src.services.ingestion_service._build_headings_map")
@@ -80,7 +86,7 @@ class TestIngestDocument:
         mock_pipeline.return_value = mock_result
 
         mock_headings.return_value = {}
-        mock_split.return_value = []
+        mock_split.return_value = []  # No chunks → embedding step skipped
 
         ingest_document(doc_id, Path("/tmp/test.pdf"))
 
@@ -116,12 +122,14 @@ class TestIngestDocument:
         with pytest.raises(ValueError, match="not found"):
             ingest_document(uuid.uuid4(), Path("/tmp/test.pdf"))
 
+    @patch("src.embeddings.embedder.embed_chunks")
+    @patch("src.embeddings.chromadb_store.ChromaDBStore")
     @patch("src.services.ingestion_service.split_pages")
     @patch("src.services.ingestion_service._build_headings_map")
     @patch("src.services.ingestion_service.run_ingestion")
     @patch("src.services.ingestion_service.get_sync_session")
     def test_chunks_persisted_to_db(
-        self, mock_session_fn, mock_pipeline, mock_headings, mock_split
+        self, mock_session_fn, mock_pipeline, mock_headings, mock_split, mock_chroma, mock_embed
     ):
         doc_id = uuid.uuid4()
         mock_doc = MagicMock(spec=Document)
@@ -138,6 +146,7 @@ class TestIngestDocument:
         mock_result.error = None
         mock_result.pages = []
         mock_pipeline.return_value = mock_result
+        mock_embed.return_value = (2, [])
 
         mock_headings.return_value = {1: "Introduction"}
         mock_split.return_value = [

@@ -58,6 +58,7 @@ def ingest_document(doc_id: uuid.UUID, file_path: Path) -> IngestionResult:
             headings_by_page = _build_headings_map(file_path)
             chunk_data_list = split_pages(result.pages, headings_by_page=headings_by_page)
 
+            db_chunks: list[Chunk] = []
             for cd in chunk_data_list:
                 chunk = Chunk(
                     doc_id=doc_id,
@@ -70,8 +71,25 @@ def ingest_document(doc_id: uuid.UUID, file_path: Path) -> IngestionResult:
                     chunk_metadata=cd.metadata if cd.metadata else None,
                 )
                 session.add(chunk)
+                db_chunks.append(chunk)
 
             log.info("chunking_complete", total_chunks=len(chunk_data_list))
+
+            # Embedding: flush to assign UUIDs, then embed + store
+            if db_chunks:
+                session.flush()
+                try:
+                    from src.embeddings.chromadb_store import ChromaDBStore
+                    from src.embeddings.embedder import embed_chunks
+
+                    vector_store = ChromaDBStore()
+                    _count, embed_warnings = embed_chunks(db_chunks, str(doc_id), vector_store)
+                    if embed_warnings:
+                        result.warnings.extend(embed_warnings)
+                    log.info("embedding_complete", embedded=_count)
+                except Exception as exc:
+                    log.warning("embedding_failed", error=str(exc))
+                    result.warnings.append(f"Embedding failed: {exc}")
 
             if result.warnings:
                 doc.status = DocumentStatus.completed_with_warnings
