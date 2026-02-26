@@ -68,6 +68,12 @@ class ObservabilitySettings(BaseModel):
     enable_traces: bool = True
 
 
+class SummarizationSettings(BaseModel):
+    map_max_tokens: int = 256
+    reduce_max_tokens: int = 512
+    max_chunks_per_reduce_batch: int = 10
+
+
 class ChromaDBSettings(BaseModel):
     collection_name: str = "doc_chunks"
     distance_function: str = "cosine"
@@ -92,6 +98,7 @@ class Settings(BaseSettings):
     embedding: EmbeddingSettings = EmbeddingSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
     llm: LLMSettings = LLMSettings()
+    summarization: SummarizationSettings = SummarizationSettings()
     conversation: ConversationSettings = ConversationSettings()
     processing: ProcessingSettings = ProcessingSettings()
     observability: ObservabilitySettings = ObservabilitySettings()

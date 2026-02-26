@@ -35,6 +35,11 @@ llm:
   temperature: 0.1
   relevance_threshold: -2.0
 
+summarization:
+  map_max_tokens: 256
+  reduce_max_tokens: 512
+  max_chunks_per_reduce_batch: 10
+
 conversation:
   max_history_turns: 5
   summary_after_turns: 10

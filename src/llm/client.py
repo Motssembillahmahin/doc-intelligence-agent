@@ -28,12 +28,15 @@ def _get_client() -> anthropic.Anthropic:
 def complete(
     messages: list[dict],
     system: str,
+    max_tokens: int | None = None,
 ) -> anthropic.types.Message:
     """Send a chat completion request to the Anthropic API.
 
     Args:
         messages: Conversation turns as [{"role": "user"|"assistant", "content": str}].
         system: The system prompt string.
+        max_tokens: Override for the output token limit. Defaults to llm.max_tokens
+                    from settings. Pass a lower value for short summarization steps.
 
     Returns:
         The raw anthropic.types.Message response (caller accesses .content and .usage).
@@ -43,7 +46,7 @@ def complete(
 
     response = client.messages.create(
         model=settings.llm.model,
-        max_tokens=settings.llm.max_tokens,
+        max_tokens=max_tokens if max_tokens is not None else settings.llm.max_tokens,
         temperature=settings.llm.temperature,
         system=system,
         messages=messages,
