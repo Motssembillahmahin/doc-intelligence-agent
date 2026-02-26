@@ -11,6 +11,7 @@ class VectorSearchResult:
     chunk_id: str
     score: float
     metadata: dict[str, Any]
+    document: str | None = None
 
 
 class VectorStore(Protocol):

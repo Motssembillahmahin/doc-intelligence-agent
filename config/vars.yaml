@@ -27,6 +27,7 @@ retrieval:
   rerank_top_k: 5
   alpha: 0.7
   rerank_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  max_context_tokens: 8000
 
 llm:
   model: "claude-sonnet-4-20250514"

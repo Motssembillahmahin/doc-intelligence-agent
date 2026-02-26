@@ -54,6 +54,7 @@ class ChromaDBStore:
         kwargs: dict[str, Any] = {
             "query_embeddings": [embedding],
             "n_results": n_results,
+            "include": ["metadatas", "distances", "documents"],
         }
         if where:
             kwargs["where"] = where
@@ -65,12 +66,14 @@ class ChromaDBStore:
             ids = raw["ids"][0]
             distances = raw["distances"][0] if raw["distances"] else [0.0] * len(ids)
             metadatas = raw["metadatas"][0] if raw["metadatas"] else [{}] * len(ids)
-            for chunk_id, dist, meta in zip(ids, distances, metadatas, strict=True):
+            documents = raw["documents"][0] if raw.get("documents") else [None] * len(ids)
+            for chunk_id, dist, meta, doc in zip(ids, distances, metadatas, documents, strict=True):
                 results.append(
                     VectorSearchResult(
                         chunk_id=chunk_id,
                         score=1.0 - dist,
                         metadata=meta,
+                        document=doc,
                     )
                 )
         return results

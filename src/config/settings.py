@@ -42,6 +42,7 @@ class RetrievalSettings(BaseModel):
     rerank_top_k: int = 5
     alpha: float = 0.7
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    max_context_tokens: int = 8000
 
 
 class LLMSettings(BaseModel):
