@@ -22,6 +22,7 @@ class IngestionSettings(BaseModel):
     ocr_enabled: bool = True
     ocr_language: str = "eng"
     image_dpi: int = 300
+    upload_dir: str = "data/pdfs"
 
 
 class ChunkingSettings(BaseModel):

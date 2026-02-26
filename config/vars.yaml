@@ -10,6 +10,7 @@ ingestion:
   ocr_enabled: true
   ocr_language: "eng"
   image_dpi: 300
+  upload_dir: "data/pdfs"
 
 chunking:
   chunk_size: 1000

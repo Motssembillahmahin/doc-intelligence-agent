@@ -40,9 +40,27 @@ class SourceChunk(BaseModel):
     score: float
 
 
+class CreateSessionRequest(BaseModel):
+    title: str | None = None
+
+
+class SummarizeResponse(BaseModel):
+    doc_id: uuid.UUID
+    summary: str
+
+
+class CrossDocSummaryRequest(BaseModel):
+    doc_ids: list[uuid.UUID]
+
+
+class CrossDocSummaryResponse(BaseModel):
+    synthesis: str
+
+
 class ChatRequest(BaseModel):
     session_id: uuid.UUID
     query: str
+    doc_ids: list[uuid.UUID] | None = None
 
 
 class ChatResponse(BaseModel):
