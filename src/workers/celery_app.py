@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.signals import worker_process_init
 
 from src.config import get_settings
 
@@ -19,3 +20,11 @@ celery_app.conf.update(
     worker_max_tasks_per_child=100,
     worker_concurrency=settings.processing.max_concurrent_tasks,
 )
+
+
+@worker_process_init.connect
+def configure_worker_logging(**kwargs: object) -> None:
+    """Configure structlog once per worker process on startup."""
+    from src.observability.logging import configure_logging
+
+    configure_logging(settings.observability.log_level, settings.observability.log_format)

@@ -9,6 +9,8 @@ Pipeline:
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+
 import structlog
 from sqlmodel import Session
 
@@ -22,12 +24,21 @@ from src.retrieval.reranker import RankedChunk, rerank
 logger = structlog.get_logger(__name__)
 
 
+@dataclass
+class RetrievalResult:
+    """Full output of the retrieval pipeline, including intermediate chunk IDs."""
+
+    context: AssembledContext
+    raw_chunk_ids: list[str] = field(default_factory=list)
+    reranked_chunk_ids: list[str] = field(default_factory=list)
+
+
 def retrieve(
     query: str,
     session: Session,
     doc_ids: list[str] | None = None,
     max_context_tokens: int | None = None,
-) -> AssembledContext:
+) -> RetrievalResult:
     """Run the full retrieval pipeline for a user query.
 
     Args:
@@ -39,8 +50,8 @@ def retrieve(
                             Defaults to retrieval.max_context_tokens in settings.
 
     Returns:
-        AssembledContext with ranked chunks and a formatted context string
-        ready for use in an LLM prompt.
+        RetrievalResult containing the assembled context and intermediate chunk
+        ID lists for observability.
     """
     log = logger.bind(query=query[:80], doc_ids=doc_ids)
     settings = get_settings()
@@ -63,7 +74,7 @@ def retrieve(
 
     if not raw_chunks:
         log.info("retrieval_no_results")
-        return AssembledContext(chunks=[], context_text="", total_tokens=0)
+        return RetrievalResult(context=AssembledContext(chunks=[], context_text="", total_tokens=0))
 
     # Step 3: Rerank candidates with cross-encoder
     ranked_chunks: list[RankedChunk] = rerank(
@@ -83,4 +94,9 @@ def retrieve(
         context_tokens=context.total_tokens,
         truncated=context.truncated,
     )
-    return context
+
+    return RetrievalResult(
+        context=context,
+        raw_chunk_ids=[c.chunk_id for c in raw_chunks],
+        reranked_chunk_ids=[c.chunk_id for c in ranked_chunks],
+    )

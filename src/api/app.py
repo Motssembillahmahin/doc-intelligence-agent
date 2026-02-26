@@ -15,12 +15,17 @@ from sqlmodel import Session
 from src.api.routes import chat, documents, sessions, summaries
 from src.db.engine import get_sync_engine
 from src.models.schemas import HealthResponse
+from src.observability.logging import configure_logging
 
 logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    from src.config import get_settings
+
+    settings = get_settings()
+    configure_logging(settings.observability.log_level, settings.observability.log_format)
     logger.info("api_startup")
     yield
     logger.info("api_shutdown")
