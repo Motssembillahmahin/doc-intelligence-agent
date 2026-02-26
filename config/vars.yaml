@@ -33,6 +33,7 @@ llm:
   model: "claude-sonnet-4-20250514"
   max_tokens: 4096
   temperature: 0.1
+  relevance_threshold: -2.0
 
 conversation:
   max_history_turns: 5

@@ -49,6 +49,7 @@ class LLMSettings(BaseModel):
     model: str = "claude-sonnet-4-20250514"
     max_tokens: int = 4096
     temperature: float = 0.1
+    relevance_threshold: float = -2.0
 
 
 class ConversationSettings(BaseModel):
