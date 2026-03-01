@@ -185,10 +185,11 @@ class TestChromaDBStore:
 
 class TestGenerateEmbeddings:
     @patch("src.embeddings.embedder.get_settings")
-    @patch("src.embeddings.embedder.openai.OpenAI")
+    @patch("openai.OpenAI")
     def test_single_batch(self, mock_openai_cls, mock_settings):
         settings = MagicMock()
         settings.openai_api_key = "test-key"
+        settings.embedding.provider = "openai"
         settings.embedding.batch_size = 100
         settings.embedding.model = "text-embedding-3-small"
         settings.embedding.dimensions = 1536
@@ -213,10 +214,11 @@ class TestGenerateEmbeddings:
         )
 
     @patch("src.embeddings.embedder.get_settings")
-    @patch("src.embeddings.embedder.openai.OpenAI")
+    @patch("openai.OpenAI")
     def test_multiple_batches(self, mock_openai_cls, mock_settings):
         settings = MagicMock()
         settings.openai_api_key = "test-key"
+        settings.embedding.provider = "openai"
         settings.embedding.batch_size = 2
         settings.embedding.model = "text-embedding-3-small"
         settings.embedding.dimensions = 1536
@@ -238,10 +240,11 @@ class TestGenerateEmbeddings:
         assert mock_client.embeddings.create.call_count == 2
 
     @patch("src.embeddings.embedder.get_settings")
-    @patch("src.embeddings.embedder.openai.OpenAI")
+    @patch("openai.OpenAI")
     def test_order_preservation(self, mock_openai_cls, mock_settings):
         settings = MagicMock()
         settings.openai_api_key = "test-key"
+        settings.embedding.provider = "openai"
         settings.embedding.batch_size = 1
         settings.embedding.model = "m"
         settings.embedding.dimensions = 3
@@ -258,6 +261,43 @@ class TestGenerateEmbeddings:
 
         result = generate_embeddings(["x", "y", "z"])
         assert result == [[1.0], [2.0], [3.0]]
+
+
+class TestGenerateEmbeddingsLocal:
+    @patch("src.embeddings.embedder.get_settings")
+    @patch("src.embeddings.embedder._generate_local")
+    def test_dispatches_to_local(self, mock_local, mock_settings):
+        settings = MagicMock()
+        settings.embedding.provider = "local"
+        mock_settings.return_value = settings
+        mock_local.return_value = [[0.1, 0.2]]
+        result = generate_embeddings(["hello"])
+        assert result == [[0.1, 0.2]]
+        mock_local.assert_called_once_with(["hello"], settings)
+
+    @patch("src.embeddings.embedder.get_settings")
+    @patch("sentence_transformers.SentenceTransformer")
+    def test_local_encode_called(self, mock_st_cls, mock_settings):
+        import numpy as np
+
+        settings = MagicMock()
+        settings.embedding.provider = "local"
+        settings.embedding.local_model = "sentence-transformers/all-MiniLM-L6-v2"
+        mock_settings.return_value = settings
+        mock_model = MagicMock()
+        mock_st_cls.return_value = mock_model
+        mock_model.encode.return_value = np.array([[0.1, 0.2, 0.3]])
+        result = generate_embeddings(["hello"])
+        mock_st_cls.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2")
+        assert result == [[0.1, 0.2, 0.3]]
+
+    @patch("src.embeddings.embedder.get_settings")
+    def test_unknown_provider_raises(self, mock_settings):
+        settings = MagicMock()
+        settings.embedding.provider = "bedrock"
+        mock_settings.return_value = settings
+        with pytest.raises(ValueError, match="Unknown embedding provider"):
+            generate_embeddings(["hello"])
 
 
 class TestEmbedChunks:

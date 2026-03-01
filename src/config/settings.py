@@ -33,9 +33,12 @@ class ChunkingSettings(BaseModel):
 
 
 class EmbeddingSettings(BaseModel):
+    provider: str = "openai"
     model: str = "text-embedding-3-small"
     dimensions: int = 1536
     batch_size: int = 100
+    local_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    local_dimensions: int = 384
 
 
 class RetrievalSettings(BaseModel):

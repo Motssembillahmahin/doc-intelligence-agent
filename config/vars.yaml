@@ -19,9 +19,12 @@ chunking:
   tiktoken_encoding: "cl100k_base"
 
 embedding:
+  provider: "openai"
   model: "text-embedding-3-small"
   dimensions: 1536
   batch_size: 100
+  local_model: "sentence-transformers/all-MiniLM-L6-v2"
+  local_dimensions: 384
 
 retrieval:
   top_k: 10

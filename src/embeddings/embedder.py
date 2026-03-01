@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import openai
 import structlog
 
 from src.config import get_settings
@@ -12,13 +11,12 @@ from src.models.database import Chunk
 logger = structlog.get_logger(__name__)
 
 
-def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a list of texts via OpenAI API with batching."""
-    settings = get_settings()
+def _generate_openai(texts: list[str], settings) -> list[list[float]]:
+    import openai  # lazy — not imported when provider == "local"
+
     client = openai.OpenAI(api_key=settings.openai_api_key)
     batch_size = settings.embedding.batch_size
     all_embeddings: list[list[float]] = []
-
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
         response = client.embeddings.create(
@@ -26,10 +24,27 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
             model=settings.embedding.model,
             dimensions=settings.embedding.dimensions,
         )
-        batch_embeddings = [item.embedding for item in response.data]
-        all_embeddings.extend(batch_embeddings)
-
+        all_embeddings.extend(item.embedding for item in response.data)
     return all_embeddings
+
+
+def _generate_local(texts: list[str], settings) -> list[list[float]]:
+    from sentence_transformers import SentenceTransformer  # lazy
+
+    model = SentenceTransformer(settings.embedding.local_model)
+    return [vec.tolist() for vec in model.encode(texts, convert_to_numpy=True)]
+
+
+def generate_embeddings(texts: list[str]) -> list[list[float]]:
+    """Generate embeddings for a list of texts using the configured provider."""
+    settings = get_settings()
+    provider = settings.embedding.provider
+    if provider == "openai":
+        return _generate_openai(texts, settings)
+    elif provider == "local":
+        return _generate_local(texts, settings)
+    else:
+        raise ValueError(f"Unknown embedding provider: {provider!r}. Valid: 'openai', 'local'.")
 
 
 def embed_chunks(
