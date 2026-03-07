@@ -1,0 +1,10 @@
+database:
+  echo: true
+
+observability:
+  log_level: "DEBUG"
+  log_format: "console"
+
+embedding:
+  provider: "local"
+  dimensions: 384   # must match all-MiniLM-L6-v2 output size
